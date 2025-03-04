@@ -354,6 +354,7 @@ namespaced_jq_filter=$(cat <<-END
     .metadata.annotations."kubernetes.io/service-account.uid",
     .metadata.annotations."pv.kubernetes.io/bind-completed",
     .metadata.annotations."pv.kubernetes.io/bound-by-controller",
+    .metadata.annotations."kubernetes.io/change-cause",
     .metadata.finalizers,
     .metadata.managedFields,
     .metadata.creationTimestamp,
@@ -362,12 +363,11 @@ namespaced_jq_filter=$(cat <<-END
     .metadata.selfLink,
     .metadata.uid,
     .spec.clusterIP,
+    .spec.clusterIPs,
     .spec.progressDeadlineSeconds,
     .spec.revisionHistoryLimit,
     .spec.template.metadata.annotations."kubectl.kubernetes.io/restartedAt",
     .spec.template.metadata.creationTimestamp,
-    .spec.volumeName,
-    .spec.volumeMode,
     .status
   )
 END
@@ -476,6 +476,15 @@ if [[ "$mode" =~ ^(dump|all|dump-namespaces|ns)$ ]]; then
                 secret "$name" "${k_args[@]}"
               )
             [ "$type" == 'kubernetes.io/service-account-token' ] && continue
+            unset type
+          fi
+          # Skip default serviceaccount
+          if [ "$resource" == 'serviceaccount' ]; then
+            type=$(
+              kubectl get --namespace="${ns}" --output=jsonpath="{.metadata.name}" \
+                serviceaccount "$name" "${k_args[@]}"
+              )
+            [ "$type" == 'default' ] && continue
             unset type
           fi
 
